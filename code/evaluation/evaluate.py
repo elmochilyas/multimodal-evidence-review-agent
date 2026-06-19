@@ -22,7 +22,7 @@ from src.evaluation_metrics import (
     fields_match,
     split_sample_rows,
 )
-from src.io_utils import load_csv, write_output_csv
+from src.io_utils import load_csv, load_user_history, write_output_csv
 from src.reviewer import ReviewConfig, review_claims
 from src.validation import validate_output_row
 
@@ -35,6 +35,11 @@ def parse_args(argv: Optional[list] = None) -> argparse.Namespace:
         "--sample",
         required=True,
         help="Path to sample_claims.csv with input and expected output labels.",
+    )
+    parser.add_argument(
+        "--user-history",
+        default="../dataset/user_history.csv",
+        help="Path to user_history.csv for history risk enrichment.",
     )
     parser.add_argument(
         "--report",
@@ -94,6 +99,7 @@ def run_evaluation(
     limit: Optional[int] = None,
     use_cache: bool = True,
     cache_dir: str = ".cache/model_responses",
+    user_history_path: str = "../dataset/user_history.csv",
 ) -> dict:
     """Run the current reviewer on sample claims and compute metrics."""
     sample_rows = load_csv(sample_path)
@@ -104,6 +110,7 @@ def run_evaluation(
 
     # CSV image paths are relative to the dataset/ directory.
     base_dir = str(Path(sample_path).parent)
+    user_history = load_user_history(user_history_path)
     config = ReviewConfig(
         mode=mode,
         provider_name=provider_name,
@@ -111,6 +118,7 @@ def run_evaluation(
         cache_dir=cache_dir,
         use_cache=use_cache,
         base_dir=base_dir,
+        user_history=user_history,
     )
 
     start_time = time.perf_counter()
@@ -313,6 +321,7 @@ def main(argv: Optional[list] = None) -> int:
         limit=args.limit,
         use_cache=not args.no_cache,
         cache_dir=args.cache_dir,
+        user_history_path=args.user_history,
     )
     report = generate_report(results, args.sample, mode=args.mode)
 

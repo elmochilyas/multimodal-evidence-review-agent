@@ -17,6 +17,7 @@ from src.constants import (
 from src.image_utils import load_images_for_model
 from src.io_utils import get_image_ids
 from src.model_provider import ModelProvider
+from src.post_processing import apply_post_processing
 from src.prompts import PROMPT_VERSION, get_repair_prompt, get_system_prompt, get_user_prompt
 from src.severity import calibrate_severity
 
@@ -225,11 +226,14 @@ def review_claim_with_model(
     cache: Optional[ModelResponseCache] = None,
     evidence_requirements: Optional[List[Dict[str, str]]] = None,
     user_history_summary: Optional[str] = None,
+    user_history: Optional[Dict[str, Dict[str, str]]] = None,
     base_dir: str = ".",
     max_retries: int = 1,
 ) -> Dict[str, str]:
     """Review a single claim using the vision model with retry and fallback."""
     image_ids = get_image_ids(claim_row.get("image_paths", ""))
+    user_id = claim_row.get("user_id", "")
+    user_history_row = user_history.get(user_id) if user_history else None
     system_prompt = get_system_prompt(claim_row.get("claim_object", ""))
     user_prompt = get_user_prompt(
         claim_row,
@@ -284,7 +288,11 @@ def review_claim_with_model(
             )
 
             if not norm_errors:
-                # Calibrate severity before finalizing the row.
+                # Apply deterministic post-processing (history, guardrails,
+                # package contents rule, mismatch detection, risk flag merge).
+                apply_post_processing(normalized, claim_row, user_history_row)
+
+                # Calibrate severity after deterministic changes to labels.
                 normalized["severity"] = calibrate_severity(normalized, claim_row)
 
                 # Add any image-related flags if model did not include them

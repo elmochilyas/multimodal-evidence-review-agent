@@ -102,6 +102,7 @@ def _review_claim_with_config(
         cache=cache,
         evidence_requirements=config.evidence_requirements,
         user_history_summary=history_summary,
+        user_history=config.user_history,
         base_dir=config.base_dir,
     )
 
