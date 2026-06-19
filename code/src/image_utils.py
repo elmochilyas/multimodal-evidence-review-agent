@@ -1,41 +1,55 @@
 """Image loading and base64 encoding utilities for vision model calls."""
 
 import base64
-import mimetypes
+import io
 from pathlib import Path
 from typing import List, Tuple
 
 from src.io_utils import split_image_paths
 
 
-def guess_mime_type(image_path: str) -> str:
-    """Guess the MIME type for an image path, defaulting to image/jpeg."""
-    mime, _ = mimetypes.guess_type(image_path)
-    if mime and mime.startswith("image/"):
-        return mime
-    return "image/jpeg"
+def _normalize_image_to_jpeg(image_path: str) -> Tuple[bytes, str]:
+    """Open an image with Pillow, apply EXIF orientation, convert to RGB, and return JPEG bytes.
+
+    Returns (jpeg_bytes, error_message). On success error_message is empty.
+    """
+    try:
+        from PIL import Image, ImageOps
+    except ImportError as exc:  # pragma: no cover - dependency issue
+        return b"", f"Pillow is required for image normalization: {exc}"
+
+    path = Path(image_path)
+    if not path.exists():
+        return b"", f"Image not found: {image_path}"
+    if not path.is_file():
+        return b"", f"Not a file: {image_path}"
+
+    try:
+        with Image.open(path) as img:
+            # Apply EXIF orientation if available.
+            img = ImageOps.exif_transpose(img)
+            # Convert to RGB (handles RGBA, P, L, etc.).
+            rgb = img.convert("RGB")
+            buffer = io.BytesIO()
+            rgb.save(buffer, format="JPEG", quality=95)
+            return buffer.getvalue(), ""
+    except Exception as exc:
+        return b"", f"Failed to normalize image {image_path}: {exc}"
 
 
 def encode_image_to_data_url(image_path: str) -> Tuple[str, bool]:
-    """Encode a local image file to a base64 data URL.
+    """Encode a local image file to a normalized JPEG base64 data URL.
 
     Returns (data_url, success). On failure, data_url is an error message.
     """
-    path = Path(image_path)
-    if not path.exists():
-        return (f"Image not found: {image_path}", False)
-    if not path.is_file():
-        return (f"Not a file: {image_path}", False)
+    data, error = _normalize_image_to_jpeg(image_path)
+    if error:
+        return (error, False)
+    if not data:
+        return (f"Empty normalized image: {image_path}", False)
 
-    try:
-        data = path.read_bytes()
-        if not data:
-            return (f"Empty image file: {image_path}", False)
-        mime = guess_mime_type(image_path)
-        b64 = base64.b64encode(data).decode("utf-8")
-        return (f"data:{mime};base64,{b64}", True)
-    except Exception as exc:  # pragma: no cover - defensive
-        return (f"Failed to read image {image_path}: {exc}", False)
+    b64 = base64.b64encode(data).decode("utf-8")
+    return (f"data:image/jpeg;base64,{b64}", True)
 
 
 def load_images_for_model(
