@@ -6,6 +6,15 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# Load local environment variables from .env if present. Secrets must never be
+# committed; .env is excluded from code.zip via .gitignore.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass  # Environment variables can still be supplied directly.
+
 from src.io_utils import (
     load_claims,
     load_evidence_requirements,

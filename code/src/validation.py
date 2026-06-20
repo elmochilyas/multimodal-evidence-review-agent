@@ -48,6 +48,19 @@ def validate_output_row(row: Dict[str, Any], input_row: Optional[Dict[str, str]]
             f"Invalid claim_status '{claim_status}', must be one of {sorted(CLAIM_STATUS_VALUES)}"
         )
 
+    # evidence_standard_met / supporting_image_ids consistency
+    evidence_standard_met = str(row.get("evidence_standard_met", ""))
+    supporting = str(row.get("supporting_image_ids", ""))
+    if (
+        evidence_standard_met == "true"
+        and supporting == "none"
+        and claim_status != "not_enough_information"
+    ):
+        errors.append(
+            "evidence_standard_met=true but supporting_image_ids=none is inconsistent "
+            f"for claim_status='{claim_status}'"
+        )
+
     # issue_type
     issue_type = str(row.get("issue_type", ""))
     if issue_type not in ISSUE_TYPE_VALUES:

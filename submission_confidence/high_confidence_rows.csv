@@ -1,0 +1,35 @@
+user_id,case_id,claim_object,claim_status,issue_type,object_part,severity,confidence_reason
+user_005,case_003,car,supported,dent,door,high,Image clearly shows a deep dent on the claimed car door
+user_004,case_004,car,supported,glass_shatter,windshield,high,Windshield has clear shattered cracks
+user_007,case_005,car,contradicted,none,side_mirror,none,Side mirror is present and intact in the image
+user_008,case_006,car,supported,dent,hood,low,Hood shows multiple small hail dents
+user_003,case_007,car,contradicted,none,rear_bumper,none,Images show other vehicles/parts; rear bumper not visible
+user_011,case_008,car,supported,broken_part,headlight,low,Headlight glass is visibly broken
+user_018,case_011,car,contradicted,dent,hood,none,Image shows front hood/headlight damage not claimed taillight
+user_014,case_014,car,supported,crack,windshield,medium,Large windshield crack is clearly visible
+user_017,case_017,laptop,supported,crack,screen,medium,One image clearly shows a cracked laptop screen
+user_018,case_018,laptop,contradicted,none,keyboard,none,Keyboard shows no liquid stains or damage
+user_020,case_020,laptop,contradicted,none,trackpad,none,Trackpad appears intact with no cracks
+user_025,case_025,laptop,supported,missing_part,keyboard,medium,Missing keycap is clearly visible
+user_027,case_026,laptop,contradicted,glass_shatter,screen,none,Image is a shattered phone screen not a laptop body
+user_028,case_027,laptop,supported,stain,screen,low,Screen shows irregular discoloration consistent with liquid stain
+user_029,case_028,laptop,supported,broken_part,hinge,high,Hinge is visibly broken and misaligned
+user_030,case_029,package,supported,torn_packaging,seal,medium,Package seal is visibly torn open
+user_031,case_030,package,supported,torn_packaging,seal,medium,Seal side is clearly torn at top edge
+user_032,case_031,package,supported,water_damage,box,medium,Multiple images show wet box and affected label
+user_033,case_032,package,not_enough_information,none,box,unknown,Images do not show the claimed missing product inside
+user_036,case_036,package,supported,water_damage,box,medium,Image shows visible water damage and a note instructing approval
+user_037,case_037,package,supported,crushed_packaging,box,high,Box is visibly crushed and deformed
+user_039,case_039,package,supported,stain,box,low,Dark oily stain is clearly visible on package
+user_042,case_041,car,contradicted,none,front_bumper,none,Blue car front bumper is undamaged; red car damage is unrelated
+user_043,case_042,car,supported,crack,rear_bumper,medium,Rear bumper crack is clearly visible
+user_046,case_043,car,contradicted,none,unknown,none,Image shows a toy car not a real car body panel
+user_047,case_045,car,supported,dent,door,medium,Left side door dent is clearly visible
+user_042,case_049,car,contradicted,none,rear_bumper,none,Rear bumper area shows no visible damage
+user_022,case_050,laptop,contradicted,none,screen,none,Laptop screens display game content with no cracks
+user_016,case_051,car,contradicted,none,door,none,Black car door is undamaged; dented door is a different color vehicle
+user_033,case_052,package,contradicted,none,package_corner,none,One image is a padded mailer; the other shows no crushed corner
+user_045,case_053,laptop,supported,missing_part,keyboard,high,Multiple keys are visibly missing from keyboard
+user_041,case_054,car,contradicted,scratch,unknown,none,Image shows scratches on a scooter side panel not a car front bumper
+user_040,case_055,package,contradicted,torn_packaging,seal,none,Tamper-evident seal is intact in both images
+user_045,case_056,laptop,supported,dent,corner,medium,Laptop corner dent is clearly visible

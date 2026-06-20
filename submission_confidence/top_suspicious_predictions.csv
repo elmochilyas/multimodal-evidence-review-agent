@@ -1,0 +1,11 @@
+rank,user_id,case_id,claim_object,claim_status,issue_type,object_part,severity,risk_flags,suspicion_reason
+1,user_026,case_026,laptop,contradicted,glass_shatter,screen,none,claim_mismatch;manual_review_required;user_history_risk;wrong_object,evidence_standard_met=false but supporting_image_ids not none; high flag count (4 flags) indicates model uncertainty
+2,user_043,case_043,car,contradicted,none,unknown,none,claim_mismatch;manual_review_required;user_history_risk;wrong_object,evidence_standard_met=false but supporting_image_ids not none; high flag count (4 flags) indicates model uncertainty
+3,user_016,case_051,car,contradicted,none,door,none,claim_mismatch;manual_review_required;user_history_risk;wrong_object_part,evidence_standard_met=false but supporting_image_ids not none; high flag count (4 flags) indicates model uncertainty
+4,user_033,case_052,package,contradicted,none,package_corner,none,claim_mismatch;manual_review_required;user_history_risk;wrong_object,evidence_standard_met=false but supporting_image_ids not none; high flag count (4 flags) indicates model uncertainty
+5,user_041,case_054,car,contradicted,scratch,unknown,none,claim_mismatch;manual_review_required;wrong_object;wrong_object_part,evidence_standard_met=false but supporting_image_ids not none; high flag count (4 flags) indicates model uncertainty
+6,user_040,case_040,package,not_enough_information,unknown,contents,unknown,claim_mismatch;cropped_or_obstructed;damage_not_visible;manual_review_required;user_history_risk;wrong_object_part,high flag count (6 flags) indicates model uncertainty; possible instruction text in claim not flagged
+7,user_030,case_030,package,supported,torn_packaging,seal,medium,none,package contents/item claim supported on exterior part
+8,user_038,case_038,package,supported,crushed_packaging,box,high,none,package contents/item claim supported on exterior part
+9,user_011,case_008,car,supported,broken_part,headlight,low,manual_review_required;text_instruction_present,text_instruction_present but claim still supported
+10,user_036,case_036,package,supported,water_damage,box,medium,manual_review_required;text_instruction_present;user_history_risk,text_instruction_present but claim still supported

@@ -22,7 +22,7 @@ from src.evaluation_metrics import (
     fields_match,
     split_sample_rows,
 )
-from src.io_utils import load_csv, load_user_history, write_output_csv
+from src.io_utils import load_csv, load_evidence_requirements, load_user_history, write_output_csv
 from src.reviewer import ReviewConfig, review_claims
 from src.validation import validate_output_row
 
@@ -40,6 +40,11 @@ def parse_args(argv: Optional[list] = None) -> argparse.Namespace:
         "--user-history",
         default="../dataset/user_history.csv",
         help="Path to user_history.csv for history risk enrichment.",
+    )
+    parser.add_argument(
+        "--evidence-requirements",
+        default="../dataset/evidence_requirements.csv",
+        help="Path to evidence_requirements.csv for the minimum evidence checklist.",
     )
     parser.add_argument(
         "--report",
@@ -100,6 +105,7 @@ def run_evaluation(
     use_cache: bool = True,
     cache_dir: str = ".cache/model_responses",
     user_history_path: str = "../dataset/user_history.csv",
+    evidence_requirements_path: str = "../dataset/evidence_requirements.csv",
 ) -> dict:
     """Run the current reviewer on sample claims and compute metrics."""
     sample_rows = load_csv(sample_path)
@@ -111,6 +117,7 @@ def run_evaluation(
     # CSV image paths are relative to the dataset/ directory.
     base_dir = str(Path(sample_path).parent)
     user_history = load_user_history(user_history_path)
+    evidence_requirements = load_evidence_requirements(evidence_requirements_path)
     config = ReviewConfig(
         mode=mode,
         provider_name=provider_name,
@@ -119,6 +126,7 @@ def run_evaluation(
         use_cache=use_cache,
         base_dir=base_dir,
         user_history=user_history,
+        evidence_requirements=evidence_requirements,
     )
 
     start_time = time.perf_counter()
@@ -322,6 +330,7 @@ def main(argv: Optional[list] = None) -> int:
         use_cache=not args.no_cache,
         cache_dir=args.cache_dir,
         user_history_path=args.user_history,
+        evidence_requirements_path=args.evidence_requirements,
     )
     report = generate_report(results, args.sample, mode=args.mode)
 

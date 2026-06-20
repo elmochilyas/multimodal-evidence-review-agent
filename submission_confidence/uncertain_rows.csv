@@ -1,0 +1,4 @@
+user_id,case_id,claim_object,current_claim_status,current_issue_type,current_object_part,current_severity,current_supporting_image_ids,note
+user_004,case_010,car,supported,dent,door,medium,img_1,Claim includes both door dent and rear bumper damage; single-row schema forces one part. Consider adding img_2 to supporting_image_ids.
+user_019,case_019,laptop,supported,broken_part,hinge,medium,img_1;img_2,Claim includes both hinge break and screen crack; screen appears intact so only hinge is supported. Partial representation.
+user_045,case_044,laptop,contradicted,crack,screen,none,img_1;img_2,Claim is laptop lid cracked but prediction uses object_part=screen. claim_status=contradicted is correct; part label could be lid.

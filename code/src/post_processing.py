@@ -11,9 +11,11 @@ import re
 from typing import Dict, List, Optional, Set
 
 from src.constants import RISK_FLAG_VALUES
+from src.io_utils import get_image_ids
 
 
 # Claim text patterns that indicate an attempt to force the reviewer's decision.
+# These are generic; no case IDs, user IDs, or image names are hardcoded.
 _PROMPT_INJECTION_PATTERNS = [
     r"approve\s+(this\s+)?claim",
     r"mark\s+(it\s+)?supported",
@@ -26,7 +28,17 @@ _PROMPT_INJECTION_PATTERNS = [
     r"output\s+supported",
     r"return\s+supported",
     r"set\s+claim_status\s*=?\s*supported",
-    r"follow\s+the\s+note",
+    r"follow\s+(the\s+)?note",
+    # Broader approval / social-pressure instructions.
+    r"approve\s+(it|this|the|claim|kar)",
+    r"approv(e|es|ed|ing)\s+(it|this|the|claim)",
+    r"claim\s+approve",
+    r"accept\s+(this|it)\s+(quickly|immediately|now|fast|soon)",
+    r"reopen\s+(tickets?|cases?|claims?)",
+    r"escalate\s+(publicly|on\s+social|complaint|this)",
+    r"tired\s+of\s+repeat\s+reviews?",
+    r"must\s+(be\s+)?approved?",
+    r"should\s+be\s+approved?",
 ]
 _PROMPT_INJECTION_RE = re.compile(
     r"(" + "|".join(_PROMPT_INJECTION_PATTERNS) + r")",
@@ -34,15 +46,26 @@ _PROMPT_INJECTION_RE = re.compile(
 )
 
 # Strong indicators that a package claim is ABOUT contents/item, not just
-# mentioning them in a support question.
+# mentioning them in a support question. Includes missing and broken/damaged contents.
 _PACKAGE_CONTENTS_CLAIM_RE = re.compile(
-    r"\b(contents?|item|product)s?\s+(are|is|were|was)\s+(missing|not\s+inside|absent)",
+    r"\b(contents?|item|product)s?\s+(are|is|were|was)\s+(missing|not\s+inside|absent|broken|damaged|cracked|shattered)",
+    re.IGNORECASE,
+)
+_PACKAGE_BROKEN_CONTENTS_RE = re.compile(
+    r"\b(item|product|contents?)\b.*\binside\b.*\b(broken|damaged|cracked|shattered)",
     re.IGNORECASE,
 )
 _PACKAGE_MISSING_RE = re.compile(
     r"\b(not\s+inside|missing\s+(from\s+)?(the\s+)?(box|package)|"
     r"could\s+not\s+find\s+(the\s+)?(item|product|contents?)|"
     r"verify\s+(that\s+)?(the\s+)?contents?\s+(are\s+)?missing)\b",
+    re.IGNORECASE,
+)
+# If the model's own reason says the contents are visible and intact, prefer contradicted
+# over not_enough_information for a broken/damaged-contents claim.
+_CONTENTS_INTACT_RE = re.compile(
+    r"\b(contents?|items?|product)s?\b.*\b(intact|undamaged|unharmed|not\s+damaged|no\s+visible\s+damage|no\s+damage)\b|"
+    r"\bno\s+visible\s+damage\s+to\s+(the\s+)?(contents|items?|product)\b",
     re.IGNORECASE,
 )
 
@@ -147,9 +170,10 @@ def _apply_prompt_injection_guardrail(
 
 
 def _is_clear_contents_claim(claim_text: str) -> bool:
-    """Return True only when the claim text is clearly about missing contents."""
+    """Return True when the claim text is clearly about contents/item damage or loss."""
     return bool(
         _PACKAGE_CONTENTS_CLAIM_RE.search(claim_text)
+        or _PACKAGE_BROKEN_CONTENTS_RE.search(claim_text)
         or _PACKAGE_MISSING_RE.search(claim_text)
     )
 
@@ -181,11 +205,6 @@ def _apply_package_contents_rule(
     if "contents" in supporting or "item" in supporting:
         return
 
-    review["evidence_standard_met"] = "false"
-    review["claim_status"] = "not_enough_information"
-    review["valid_image"] = "false"
-    review["supporting_image_ids"] = "none"
-
     if "contents" in claim_text or "content" in claim_text:
         review["object_part"] = "contents"
     elif "item" in claim_text or "product" in claim_text:
@@ -194,6 +213,36 @@ def _apply_package_contents_rule(
     issue_type = str(review.get("issue_type", "")).strip().lower()
     if issue_type != "missing_part":
         review["issue_type"] = "unknown"
+
+    # If the claim says contents/item are broken/damaged and the model's own reason
+    # says they are visible and intact, prefer contradicted over not_enough_information.
+    broken_contents = bool(
+        re.search(r"\b(broken|damaged|cracked|shattered)\b", claim_text)
+    )
+    combined_reason = (
+        f"{review.get('evidence_standard_met_reason', '')} "
+        f"{review.get('claim_status_justification', '')}"
+    ).lower()
+    if broken_contents and _CONTENTS_INTACT_RE.search(combined_reason):
+        review["evidence_standard_met"] = "true"
+        review["claim_status"] = "contradicted"
+        review["valid_image"] = "true"
+        review["supporting_image_ids"] = "none"
+        review["issue_type"] = "none"
+        review["severity"] = "none"
+        _set_risk_flags(review, {"claim_mismatch", "manual_review_required"})
+        reason = (
+            "The contents are visible in the images and appear intact, "
+            "contradicting the claim that they are damaged."
+        )
+        review["evidence_standard_met_reason"] = reason
+        review["claim_status_justification"] = reason
+        return
+
+    review["evidence_standard_met"] = "false"
+    review["claim_status"] = "not_enough_information"
+    review["valid_image"] = "false"
+    review["supporting_image_ids"] = "none"
 
     flags_to_add = {"cropped_or_obstructed", "damage_not_visible", "manual_review_required"}
     _set_risk_flags(review, flags_to_add)
@@ -236,6 +285,25 @@ def _apply_mismatch_guardrail(
             _set_risk_flags(review, {"damage_not_visible"})
 
 
+def _apply_supporting_ids_consistency(
+    review: Dict[str, str], claim_row: Dict[str, str]
+) -> None:
+    """Ensure contradicted claims reference at least one image when images are valid.
+
+    A contradicted decision must be grounded in visible evidence. If the model
+    returned no supporting image IDs but the images are usable, fall back to
+    referencing all submitted image IDs so the justification remains traceable.
+    """
+    claim_status = str(review.get("claim_status", "")).strip().lower()
+    valid_image = str(review.get("valid_image", "")).strip().lower()
+    supporting = str(review.get("supporting_image_ids", "")).strip().lower()
+
+    if claim_status == "contradicted" and supporting == "none" and valid_image == "true":
+        image_ids = get_image_ids(claim_row.get("image_paths", ""))
+        if image_ids:
+            review["supporting_image_ids"] = ";".join(image_ids)
+
+
 def _normalize_risk_flags(review: Dict[str, str]) -> None:
     """Deduplicate and sort risk flags; ensure 'none' only when truly empty."""
     flags = set(_split_risk_flags(review.get("risk_flags", "")))
@@ -252,4 +320,5 @@ def apply_post_processing(
     _apply_prompt_injection_guardrail(review, claim_row)
     _apply_package_contents_rule(review, claim_row)
     _apply_mismatch_guardrail(review, claim_row)
+    _apply_supporting_ids_consistency(review, claim_row)
     _normalize_risk_flags(review)

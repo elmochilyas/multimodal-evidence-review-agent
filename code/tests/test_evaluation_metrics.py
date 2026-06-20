@@ -262,3 +262,38 @@ def test_main_with_diagnostics_outputs(tmp_path) -> None:
     assert report_path.exists()
     assert predictions_path.exists()
     assert mismatches_path.exists()
+
+
+def test_evidence_requirements_argument_is_loaded_and_passed(tmp_path) -> None:
+    """Ensure evaluate.py can load and pass a custom evidence_requirements file."""
+    from evaluation.evaluate import main
+
+    sample_path = tmp_path / "sample.csv"
+    sample_path.write_text(
+        'user_id,image_paths,user_claim,claim_object,'
+        'evidence_standard_met,evidence_standard_met_reason,risk_flags,issue_type,object_part,'
+        'claim_status,claim_status_justification,supporting_image_ids,valid_image,severity\n'
+        'u1,a.jpg,claim,car,true,,none,dent,door,supported,,img_1,true,low\n',
+        encoding="utf-8",
+    )
+    requirements_path = tmp_path / "requirements.csv"
+    requirements_path.write_text(
+        'requirement_id,claim_object,applies_to,minimum_image_evidence\n'
+        'REQ_TEST,all,test,Test requirement.\n',
+        encoding="utf-8",
+    )
+    report_path = tmp_path / "report.md"
+
+    code = main(
+        [
+            "--sample",
+            str(sample_path),
+            "--report",
+            str(report_path),
+            "--evidence-requirements",
+            str(requirements_path),
+        ]
+    )
+
+    assert code == 0
+    assert report_path.exists()
